@@ -3,10 +3,17 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/gorcon/rcon"
 	"github.com/go-redis/redis/v8"
 )
+
+type PlayerStats struct {
+	Player   string `json:"player"`
+	StatType string `json:"statType"`
+	Value    int    `json:"value"`
+}
 
 var rdb *redis.Client
 
