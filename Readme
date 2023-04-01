@@ -1,0 +1,35 @@
+# MinecraftStatStream
+
+MinecraftStatStream is a real-time stats tracking and visualization system for Minecraft servers. It fetches player statistics from a Minecraft server, stores them in Redis, and serves the stats through a WebSocket API to a web-based dashboard. The dashboard displays the stats and updates them in real-time as they change on the Minecraft server.
+
+## Features
+
+- Real-time tracking and visualization of Minecraft player stats
+- Stats caching using Redis for improved performance
+- WebSocket API for low-latency updates
+- Easy deployment using Docker and Docker Compose
+
+## Getting Started
+
+### Prerequisites
+
+- [Go](https://golang.org/dl/) (v1.17 or later)
+- [Docker](https://www.docker.com/get-started) and [Docker Compose](https://docs.docker.com/compose/install/)
+- [Redis](https://redis.io/download) (v6.2 or later)
+- A Minecraft server with RCON enabled
+
+### Installation
+
+1. Clone the repository:
+
+
+2. Update the Go API with your Minecraft server details (e.g., RCON address, password, and commands to fetch stats) in the `main.go` file.
+
+3. Build and run the services using Docker Compose:
+
+
+4. Access the dashboard at `http://localhost` and the WebSocket API at `http://localhost:8080/stats`.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
