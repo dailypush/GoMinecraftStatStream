@@ -2,19 +2,17 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/gorcon/rcon"
 	"github.com/go-redis/redis/v8"
 )
-
-type PlayerStats struct {
-	Player   string `json:"player"`
-	StatType string `json:"statType"`
-	Value    int    `json:"value"`
-}
 
 var rdb *redis.Client
 
@@ -26,22 +24,22 @@ func init() {
 	})
 }
 
-func getPlayerStat(conn *rcon.Conn, player, statType string) (int, error) {
-	// Replace the following line with the appropriate command to fetch the player's stat
-	response, err := conn.Execute(fmt.Sprintf("stats %s %s", player, statType))
 
-	if err != nil {
-		return 0, err
-	}
-
-	// Parse the response to extract the stat value (replace this with the correct parsing logic)
-	value := 0 // Set this to the actual value extracted from the response
-
-	return value, nil
-}
 
 func fetchPlayerStats() []PlayerStats {
-	conn, err := rcon.Dial("your.minecraftserver.com:25575", "your_rcon_password")
+	switch StatsSource {
+	case "rcon":
+		return fetchPlayerStatsFromRcon()
+	case "json":
+		return fetchPlayerStatsFromJson()
+	default:
+		log.Fatalf("Invalid stats source: %s", StatsSource)
+		return nil
+	}
+}
+
+func fetchPlayerStatsFromRcon() []PlayerStats {
+	conn, err := rcon.Dial(RconAddress, RconPassword)
 	if err != nil {
 		log.Fatal("Could not connect to the Minecraft server:", err)
 	}
@@ -90,4 +88,72 @@ func fetchPlayerStats() []PlayerStats {
 	}
 
 	return stats
+}
+
+func fetchPlayerStatsFromJson() []PlayerStats {
+	stats := []PlayerStats{}
+
+	// List the stat types you want to fetch here
+	statTypes := []string{
+		// ...
+	}
+
+	err := filepath.Walk(JsonStatsDirectory, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !info.IsDir() {
+			playerStats, err := processStatFile(path, info, statTypes)
+			if err != nil {
+				log.Printf("Failed to process stat file: %v", err)
+			} else {
+				stats = append(stats, playerStats...)
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		log.Fatal("Failed to fetch stats from JSON files:", err)
+	}
+
+	return stats
+}
+
+func processStatFile(path string, info os.FileInfo, statTypes []string) ([]PlayerStats, error) {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read stat file: %w", err)
+	}
+
+	var rawStats map[string]map[string]int
+	err = json.Unmarshal(data, &rawStats)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse stat file: %w", err)
+	}
+
+	playerUUID := info.Name()[:len(info.Name())-len(".json")]
+	playerName, err := uuidToPlayerName(playerUUID)
+	if err != nil {
+		log.Printf("Failed to convert UUID to player name: %v", err)
+		return nil, err
+	}
+
+	stats := []PlayerStats{}
+	for _, statType := range statTypes {
+		if category, ok := rawStats[statType]; ok {
+			for stat, value := range category {
+				stat := PlayerStats{
+					Player:   playerName,
+					StatType: stat,
+					Value:    value,
+				}
+
+				stats = append(stats, stat)
+			}
+		}
+	}
+
+	return stats, nil
 }
