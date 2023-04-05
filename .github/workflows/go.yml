@@ -20,17 +20,21 @@ jobs:
 
     - name: Get dependencies
       run: go get -v -t -d ./...
+      working-directory: src
 
     - name: Lint
       run: |
         go get -u golang.org/x/lint/golint
         golint -set_exit_status $(go list ./...)
+      working-directory: src
 
     - name: Build
       run: go build -v -o minecraft-player-stats .
+      working-directory: src
 
     - name: Test
       run: go test -v ./...
+      working-directory: src
 
     - name: Upload artifact
       uses: actions/upload-artifact@v3
