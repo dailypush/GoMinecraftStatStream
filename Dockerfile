@@ -1,22 +1,26 @@
-FROM golang:1.17-alpine as builder
+# Builder stage
+FROM golang:1.18 AS build
 
 WORKDIR /app
 
-COPY go.mod go.sum ./
+COPY ./src/go.mod ./src/go.sum ./
 RUN go mod download
 
-COPY . .
+COPY src/ .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o main .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o minecraft-player-stats .
 
-FROM alpine:latest
+#######################
+# Runtime stage
 
-RUN apk --no-cache add ca-certificates
+FROM gcr.io/distroless/base
 
-WORKDIR /root/
+# Set the working directory
+WORKDIR /app
 
-COPY --from=builder /app/main .
+# Copy the binary from the build stage
+COPY --from=build /app/minecraft-player-stats .
 
 EXPOSE 8080
 
-CMD ["./main"]
+CMD ["./minecraft-player-stats"]
