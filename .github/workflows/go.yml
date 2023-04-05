@@ -23,10 +23,7 @@ jobs:
       working-directory: src
 
     - name: Lint
-      run: |
-        go get -u golang.org/x/lint/golint
-        $(go env GOPATH)/bin/golint -set_exit_status $(go list ./...)
-      working-directory: src
+      run: go vet ./src/...
 
     - name: Build
       run: go build -v -o minecraft-player-stats .
