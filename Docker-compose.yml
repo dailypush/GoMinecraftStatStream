@@ -7,7 +7,10 @@ services:
       - "8080:8080"
     depends_on:
       - redis
-
+    environment:
+      - POLLING_INTERVAL=5m # Set the desired polling interval here
+      - STATS_SOURCE=json
+      - JSON_STATS_DIRECTORY=./json_stats
   redis:
     image: "redis:6.2-alpine"
     volumes:

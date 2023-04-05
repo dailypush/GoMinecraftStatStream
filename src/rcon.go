@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/gorcon/rcon"
 )
@@ -15,7 +17,12 @@ func getPlayerStat(conn *rcon.Conn, player, statType string) (int, error) {
 	}
 
 	// Parse the response to extract the stat value (replace this with the correct parsing logic)
-	value := 0 // Set this to the actual value extracted from the response
+	valueStr := strings.TrimSpace(response) // Adjust this if the response format requires more complex parsing
+
+	value, err := strconv.Atoi(valueStr)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse stat value: %v", err)
+	}
 
 	return value, nil
 }
