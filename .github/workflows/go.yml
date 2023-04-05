@@ -37,5 +37,5 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-artifact@v3
       with:
-        name: minecraft-player-stats
-        path: minecraft-player-stats
+        name: minecraftstatstream
+        path: minecraft-player-stats/minecraftstatstream
