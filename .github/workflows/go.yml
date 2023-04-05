@@ -1,0 +1,39 @@
+name: Go
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.16
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+
+    - name: Get dependencies
+      run: go get -v -t -d ./...
+
+    - name: Lint
+      run: |
+        go get -u golang.org/x/lint/golint
+        golint -set_exit_status $(go list ./...)
+
+    - name: Build
+      run: go build -v -o minecraft-player-stats .
+
+    - name: Test
+      run: go test -v ./...
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: minecraft-player-stats
+        path: minecraft-player-stats
