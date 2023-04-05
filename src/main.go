@@ -1,8 +1,6 @@
 package main
 
 import (
-	"flag"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -12,14 +10,14 @@ import (
 )
 
 func main() {
-	help := flag.Bool("help", false, "Display help information")
+	// help := flag.Bool("help", false, "Display help information")
 
-	flag.Parse()
+	// flag.Parse()
 
-	if *help || len(os.Args) == 1 {
-		usage()
-		os.Exit(0)
-	}
+	// if *help || len(os.Args) == 1 {
+	// 	usage()
+	// 	os.Exit(0)
+	// }
 
 	r := mux.NewRouter()
 
@@ -48,9 +46,9 @@ func main() {
 	pollPlayerStats(pollingInterval)
 }
 
-func usage() {
-	fmt.Printf("Usage: %s [OPTIONS]\n\n", os.Args[0])
-	fmt.Println("Minecraft Player Stats Stream")
-	fmt.Println("\nOptions:")
-	flag.PrintDefaults()
-}
+// func usage() {
+// 	fmt.Printf("Usage: %s [OPTIONS]\n\n", os.Args[0])
+// 	fmt.Println("Minecraft Player Stats Stream")
+// 	fmt.Println("\nOptions:")
+// 	flag.PrintDefaults()
+// }

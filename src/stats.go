@@ -98,6 +98,8 @@ func fetchPlayerStatsFromRcon() []PlayerStats {
 			err = rdb.Set(ctx, key, stat.Value, 0).Err()
 			if err != nil {
 				log.Printf("Failed to set stat in Redis: %v", err)
+			} else {
+				log.Printf("Successfully set stat in Redis: Key=%s, Value=%d", key, stat.Value)
 			}
 
 			stats = append(stats, stat)

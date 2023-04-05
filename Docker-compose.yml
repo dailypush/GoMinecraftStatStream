@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   api:
     build: .
@@ -8,18 +6,17 @@ services:
     depends_on:
       - redis
     environment:
-      - POLLING_INTERVAL=5m # Set the desired polling interval here
+      - POLLING_INTERVAL=5s
       - STATS_SOURCE=json
-      - JSON_STATS_DIRECTORY=./json_stats
+      - JSON_STATS_DIRECTORY=/json_stats
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=
+      - REDIS_DB=0
+    volumes:
+      - ./json:/json_stats:ro
   redis:
     image: "redis:6.2-alpine"
     volumes:
       - redis-data:/data
-
-  website:
-    build: ./path/to/website
-    ports:
-      - "80:80"
-
 volumes:
   redis-data:

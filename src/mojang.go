@@ -18,7 +18,7 @@ func uuidToPlayerName(uuid string) (string, error) {
 	strippedUUID := strings.ReplaceAll(uuid, "-", "")
 
 	// Make an API request to Mojang to fetch the player name
-	resp, err := http.Get(fmt.Sprintf("https://api.mojang.com/user/profiles/%s/names", strippedUUID))
+	resp, err := http.Get(fmt.Sprintf("https://api.mojang.com/user/profile/%s", strippedUUID))
 	if err != nil {
 		return "", err
 	}

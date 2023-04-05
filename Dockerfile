@@ -23,4 +23,4 @@ COPY --from=build /app/minecraft-player-stats .
 
 EXPOSE 8080
 
-CMD ["./minecraft-player-stats"]
+ENTRYPOINT ["./minecraft-player-stats"]
