@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/go-redis/redis/v8"
@@ -16,10 +17,29 @@ import (
 var rdb *redis.Client
 
 func init() {
+	// Read Redis connection settings from environment variables
+	redisAddr := os.Getenv("REDIS_ADDR")
+	redisPassword := os.Getenv("REDIS_PASSWORD")
+	redisDB := os.Getenv("REDIS_DB")
+
+	// Set default values if not provided in environment variables
+	if redisAddr == "" {
+		redisAddr = "redis:6379"
+	}
+	if redisDB == "" {
+		redisDB = "0"
+	}
+
+	// Parse Redis database index as integer
+	redisDBInt, err := strconv.Atoi(redisDB)
+	if err != nil {
+		log.Fatalf("Invalid Redis database index: %s", redisDB)
+	}
+
 	rdb = redis.NewClient(&redis.Options{
-		Addr:     "redis:6379",
-		Password: "",
-		DB:       0,
+		Addr:     redisAddr,
+		Password: redisPassword,
+		DB:       redisDBInt,
 	})
 }
 
