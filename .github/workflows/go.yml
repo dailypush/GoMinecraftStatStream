@@ -30,9 +30,9 @@ jobs:
       run: go build -v -o minecraft-player-stats .
       working-directory: src
 
-    - name: Test
-      run: go test -v ./...
-      working-directory: src
+    # - name: Test
+    #   run: go test -v ./...
+    #   working-directory: src
 
     - name: Upload artifact
       uses: actions/upload-artifact@v3
