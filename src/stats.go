@@ -1,47 +1,15 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/gorcon/rcon"
 )
-
-var rdb *redis.Client
-
-func init() {
-	// Read Redis connection settings from environment variables
-	redisAddr := os.Getenv("REDIS_ADDR")
-	redisPassword := os.Getenv("REDIS_PASSWORD")
-	redisDB := os.Getenv("REDIS_DB")
-
-	// Set default values if not provided in environment variables
-	if redisAddr == "" {
-		redisAddr = "redis:6379"
-	}
-	if redisDB == "" {
-		redisDB = "0"
-	}
-
-	// Parse Redis database index as integer
-	redisDBInt, err := strconv.Atoi(redisDB)
-	if err != nil {
-		log.Fatalf("Invalid Redis database index: %s", redisDB)
-	}
-
-	rdb = redis.NewClient(&redis.Options{
-		Addr:     redisAddr,
-		Password: redisPassword,
-		DB:       redisDBInt,
-	})
-}
 
 func fetchPlayerStats() []PlayerStats {
 	switch StatsSource {
@@ -53,6 +21,15 @@ func fetchPlayerStats() []PlayerStats {
 		log.Fatalf("Invalid stats source: %s", StatsSource)
 		return nil
 	}
+}
+
+func parsePlayerList(playerList string) []string {
+	trimmed := strings.TrimSpace(strings.TrimPrefix(playerList, "There are x/y players online:"))
+	if trimmed == "" {
+		return []string{}
+	}
+
+	return strings.Split(trimmed, ", ")
 }
 
 func fetchPlayerStatsFromRcon() []PlayerStats {
@@ -67,7 +44,7 @@ func fetchPlayerStatsFromRcon() []PlayerStats {
 		log.Fatal("Could not fetch player list:", err)
 	}
 
-	playerNames := strings.Split(strings.TrimSpace(strings.TrimPrefix(playerList, "There are x/y players online:")), ", ")
+	playerNames := parsePlayerList(playerList)
 
 	statTypes := []string{
 		// List the stat types you want to fetch here, e.g.:
@@ -77,8 +54,6 @@ func fetchPlayerStatsFromRcon() []PlayerStats {
 	}
 
 	stats := []PlayerStats{}
-
-	ctx := context.Background()
 
 	for _, playerName := range playerNames {
 		for _, statType := range statTypes {
@@ -94,12 +69,11 @@ func fetchPlayerStatsFromRcon() []PlayerStats {
 				Value:    value,
 			}
 
-			key := fmt.Sprintf("player_stats:%s:%s", stat.Player, stat.StatType)
-			err = rdb.Set(ctx, key, stat.Value, 0).Err()
+			err = storePlayerStatInRedis(stat)
 			if err != nil {
-				log.Printf("Failed to set stat in Redis: %v", err)
+				log.Printf("Error storing player stat in Redis: %v", err)
 			} else {
-				log.Printf("Successfully set stat in Redis: Key=%s, Value=%d", key, stat.Value)
+				log.Printf("Successfully set stat in Redis: Key=player_stats:%s:%s, Value=%d", playerName, statType, stat.Value)
 			}
 
 			stats = append(stats, stat)
@@ -107,6 +81,45 @@ func fetchPlayerStatsFromRcon() []PlayerStats {
 	}
 
 	return stats
+}
+
+func processStatFile(path string) ([]PlayerStats, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read stat file: %v", err)
+	}
+
+	var rawStats struct {
+		Stats map[string]map[string]int
+	}
+	err = json.Unmarshal(data, &rawStats)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse stat file: %v", err)
+	}
+
+	fileName := filepath.Base(path)
+	playerUUID := fileName[:len(fileName)-len(".json")]
+	playerName, err := uuidToPlayerName(playerUUID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert UUID to player name: %v", err)
+	}
+
+	stats := []PlayerStats{}
+
+	// Iterate over all stat types in the JSON file
+	for statType, category := range rawStats.Stats {
+		for stat, value := range category {
+			playerStat := PlayerStats{
+				Player:   playerName,
+				StatType: fmt.Sprintf("%s:%s", statType, stat),
+				Value:    value,
+			}
+
+			stats = append(stats, playerStat)
+		}
+	}
+
+	return stats, nil
 }
 
 func fetchPlayerStatsFromJson() []PlayerStats {
@@ -118,41 +131,13 @@ func fetchPlayerStatsFromJson() []PlayerStats {
 		}
 
 		if !info.IsDir() {
-			data, err := os.ReadFile(path)
+			fileStats, err := processStatFile(path)
 			if err != nil {
-				log.Printf("Failed to read stat file: %v", err)
+				log.Printf("Error processing stat file %s: %v", path, err)
 				return nil
 			}
 
-			var rawStats struct {
-				Stats map[string]map[string]int
-			}
-			err = json.Unmarshal(data, &rawStats)
-			if err != nil {
-				log.Printf("Failed to parse stat file: %v", err)
-				return nil
-			}
-
-			playerUUID := info.Name()[:len(info.Name())-len(".json")]
-			playerName, err := uuidToPlayerName(playerUUID)
-			if err != nil {
-				log.Printf("Failed to convert UUID to player name: %v", err)
-				return nil
-			}
-
-			// Iterate over all stat types in the JSON file
-			for statType, category := range rawStats.Stats {
-				for stat, value := range category {
-					playerStat := PlayerStats{
-						Player:   playerName,
-						StatType: fmt.Sprintf("%s:%s", statType, stat),
-						Value:    value,
-					}
-
-					stats = append(stats, playerStat)
-				}
-			}
-
+			stats = append(stats, fileStats...)
 		}
 		return nil
 	})
