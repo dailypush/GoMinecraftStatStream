@@ -1,58 +1,59 @@
-# Minecraft Player Stats Stream
+# Go Minecraft Stat Stream
 
-This Go application fetches player statistics from a Minecraft server and stores them in a Redis database. It provides an API for retrieving player stats and supports both RCON and JSON-based data sources.
+This is a simple Go application that fetches player statistics from a Minecraft server and stores them in a Redis database. It offers an API to query player statistics.
 
 ## Features
 
-- Fetch player stats from Minecraft server using RCON or JSON files.
-- Store player stats in Redis for fast and efficient retrieval.
-- REST API for querying player stats.
-- Docker and Docker Compose support for easy deployment.
+- Fetches player statistics from a Minecraft server using RCON or JSON.
+- Stores player statistics in a Redis database.
+- Offers an API to query player statistics with optional grouping and sorting.
+- Allows users to query player statistics based on player name and/or specific stat type.
 
 ## Usage
 
-### REST API Endpoints
+### API Endpoints
 
-- `GET /playerstats?playername=<playername>[&stattype=<stattype>]`: Retrieve the stats of a specific player by providing the `playername` query parameter. Optionally filter by a specific `stattype`.
+#### Get Player Stats
 
-### Environment Variables
+- **Endpoint:** `/playerstats`
+- **Method:** `GET`
+- **Query Parameters:**
+  - `playername` (required): The name of the player whose stats are to be retrieved.
+  - `stattype` (optional): The specific stat type to retrieve. If not provided, all stats for the player are retrieved.
+  - `groupby` (optional): Group results by specific criteria. Currently supported: `stattype`.
+  - `sort` (optional): Sort results by value. Supported values: `asc` (ascending) and `desc` (descending).
+- **Example Usage:**
+  - Get all stats for player `pvpNJ`: `http://localhost:8080/playerstats?playername=pvpNJ`
+  - Get specific stat `minecraft:mined:minecraft:chest` for player `pvpNJ`: `http://localhost:8080/playerstats?playername=pvpNJ&stattype=minecraft:mined:minecraft:chest`
+  - Get all stats for player `pvpNJ`, grouped by `stattype` and sorted in descending order: `http://localhost:8080/playerstats?playername=pvpNJ&groupby=stattype&sort=desc`
 
-- `POLLING_INTERVAL`: The interval at which the application polls the Minecraft server for player stats (e.g. `5m` for 5 minutes).
-- `STATS_SOURCE`: The source of the stats, either `rcon` or `json`.
-- `JSON_STATS_DIRECTORY`: The directory containing JSON stat files (only required if `STATS_SOURCE` is `json`).
-- `RCON_ADDRESS`: The address of the Minecraft server's RCON interface (only required if `STATS_SOURCE` is `rcon`).
-- `RCON_PASSWORD`: The password for the Minecraft server's RCON interface (only required if `STATS_SOURCE` is `rcon`).
-- `REDIS_ADDR`: The address of the Redis database.
-- `REDIS_PASSWORD`: The password for the Redis database.
-- `REDIS_DB`: The Redis database index to use.
+## Configuration
 
-### Docker Compose
+Configure the application using environment variables in the `docker-compose.yml` file:
 
-To run the application using Docker Compose, use the following command:
+- `POLLING_INTERVAL`: The interval at which the application polls for new stats (e.g., `5m` for 5 minutes).
+- `STATS_SOURCE`: The source of stats, either `rcon` for RCON or `json` for JSON.
+- `JSON_STATS_DIRECTORY`: The directory where JSON stat files are located (used only if `STATS_SOURCE` is `json`).
+- `REDIS_ADDR`: The address of the Redis server.
+- `REDIS_PASSWORD`: The password for the Redis server (if applicable).
+- `REDIS_DB`: The Redis database index.
 
-```bash
-docker-compose up
-```
+## Running the Application
 
-### Example Usage
+1. Build the Docker image: `docker-compose build`
+2. Run the application: `docker-compose up`
 
-Querying Player Stats
-To retrieve the stats of a specific player named "pvpNJ", use the following API endpoint:
+## Development
 
-```http
-GET /playerstats?playername=pvpNJ
-```
-To retrieve a specific stat (e.g. "minecraft:mined:minecraft:dirt") for player "pvpNJ", use the following API endpoint:
+The application is written in Go and consists of the following components:
 
-```http
-GET /playerstats?playername=pvpNJ&stattype=minecraft:mined:minecraft:dirt
-```
+- `main.go`: Entry point of the application.
+- `polling.go`: Handles the periodic polling of player stats.
+- `stats.go`: Fetches player stats and stores them in Redis.
+- `mojang.go`: Converts player UUIDs to player names.
+- `handler.go`: HTTP handlers for the API endpoints.
+- `playerstats.go`: The endpoint for querying player stats with grouping and sorting functionality.
 
-#### Contributing
-
-Contributions are welcome! Please feel free to open a pull request or report issues.
-
-License
+## License
 
 This project is licensed under the MIT License.
-
