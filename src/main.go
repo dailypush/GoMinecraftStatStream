@@ -23,6 +23,7 @@ func main() {
 
 	r.HandleFunc("/stats", getStats).Methods("GET")
 	r.HandleFunc("/ws", wsEndpoint)
+	r.HandleFunc("/playerstats", GetPlayerStats).Methods("GET")
 
 	go func() {
 		log.Println("Starting server on :8080")

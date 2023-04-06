@@ -1,35 +1,58 @@
-# MinecraftStatStream
+# Minecraft Player Stats Stream
 
-MinecraftStatStream is a real-time stats tracking and visualization system for Minecraft servers. It fetches player statistics from a Minecraft server, stores them in Redis, and serves the stats through a WebSocket API to a web-based dashboard. The dashboard displays the stats and updates them in real-time as they change on the Minecraft server.
+This Go application fetches player statistics from a Minecraft server and stores them in a Redis database. It provides an API for retrieving player stats and supports both RCON and JSON-based data sources.
 
 ## Features
 
-- Real-time tracking and visualization of Minecraft player stats
-- Stats caching using Redis for improved performance
-- WebSocket API for low-latency updates
-- Easy deployment using Docker and Docker Compose
+- Fetch player stats from Minecraft server using RCON or JSON files.
+- Store player stats in Redis for fast and efficient retrieval.
+- REST API for querying player stats.
+- Docker and Docker Compose support for easy deployment.
 
-## Getting Started
+## Usage
 
-### Prerequisites
+### REST API Endpoints
 
-- [Go](https://golang.org/dl/) (v1.17 or later)
-- [Docker](https://www.docker.com/get-started) and [Docker Compose](https://docs.docker.com/compose/install/)
-- [Redis](https://redis.io/download) (v6.2 or later)
-- A Minecraft server with RCON enabled
+- `GET /playerstats?playername=<playername>[&stattype=<stattype>]`: Retrieve the stats of a specific player by providing the `playername` query parameter. Optionally filter by a specific `stattype`.
 
-### Installation
+### Environment Variables
 
-1. Clone the repository:
+- `POLLING_INTERVAL`: The interval at which the application polls the Minecraft server for player stats (e.g. `5m` for 5 minutes).
+- `STATS_SOURCE`: The source of the stats, either `rcon` or `json`.
+- `JSON_STATS_DIRECTORY`: The directory containing JSON stat files (only required if `STATS_SOURCE` is `json`).
+- `RCON_ADDRESS`: The address of the Minecraft server's RCON interface (only required if `STATS_SOURCE` is `rcon`).
+- `RCON_PASSWORD`: The password for the Minecraft server's RCON interface (only required if `STATS_SOURCE` is `rcon`).
+- `REDIS_ADDR`: The address of the Redis database.
+- `REDIS_PASSWORD`: The password for the Redis database.
+- `REDIS_DB`: The Redis database index to use.
 
+### Docker Compose
 
-2. Update the Go API with your Minecraft server details (e.g., RCON address, password, and commands to fetch stats) in the `main.go` file.
+To run the application using Docker Compose, use the following command:
 
-3. Build and run the services using Docker Compose:
+```bash
+docker-compose up
+```
 
+### Example Usage
 
-4. Access the dashboard at `http://localhost` and the WebSocket API at `http://localhost:8080/stats`.
+Querying Player Stats
+To retrieve the stats of a specific player named "pvpNJ", use the following API endpoint:
 
-## License
+```http
+GET /playerstats?playername=pvpNJ
+```
+To retrieve a specific stat (e.g. "minecraft:mined:minecraft:dirt") for player "pvpNJ", use the following API endpoint:
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+```http
+GET /playerstats?playername=pvpNJ&stattype=minecraft:mined:minecraft:dirt
+```
+
+#### Contributing
+
+Contributions are welcome! Please feel free to open a pull request or report issues.
+
+License
+
+This project is licensed under the MIT License.
+
