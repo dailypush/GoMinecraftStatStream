@@ -1,0 +1,12 @@
+# .goreleaser.yml
+builds:
+  - id: minecraft-player-stats
+    main: ./src/main.go
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    # ...
+
+# ...
