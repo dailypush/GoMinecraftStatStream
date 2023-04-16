@@ -2,12 +2,6 @@
 builds:
   - id: minecraft-player-stats
     main: ./src
-    goos:
-      - linux
-    goarch:
-      - amd64
-      - arm64
-
     ldflags:
       - -s -w
 
