@@ -40,7 +40,7 @@ func (s *Server) Stop() {
 func (s *Server) routes() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/getstats", getStats)
-	mux.HandleFunc("/ws", wsEndpoint)
+	// mux.HandleFunc("/ws", wsEndpoint) // Define wsEndpoint if needed
 	mux.HandleFunc("/playerstats", GetPlayerStats)
 	return mux
 }
