@@ -29,7 +29,6 @@ jobs:
       working-directory: src
 
     - name: Run GoReleaser
-      if: startsWith(github.ref, 'refs/tags/v')
       uses: goreleaser/goreleaser-action@v4
       with:
         version: latest
@@ -44,4 +43,5 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: minecraft-player-stats
-        path: ./src/minecraft-player-stats
+        path: ./dist/
+    
