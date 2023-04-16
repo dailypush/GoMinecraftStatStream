@@ -37,6 +37,7 @@ Configure the application using environment variables in the `docker-compose.yml
 - `REDIS_ADDR`: The address of the Redis server.
 - `REDIS_PASSWORD`: The password for the Redis server (if applicable).
 - `REDIS_DB`: The Redis database index.
+- `SERVER_PORT`: (optional) 
 
 ## Running the Application
 
