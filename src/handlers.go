@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 
@@ -38,10 +37,4 @@ func wsEndpoint(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-}
-
-func getStats(w http.ResponseWriter, r *http.Request) {
-	stats := fetchPlayerStats()
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(stats)
 }

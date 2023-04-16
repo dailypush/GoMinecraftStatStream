@@ -1,12 +1,42 @@
 # .goreleaser.yml
 builds:
   - id: minecraft-player-stats
-    main: ./src/main.go
+    main: ./src
     goos:
       - linux
     goarch:
       - amd64
       - arm64
-    # ...
 
-# ...
+    ldflags:
+      - -s -w
+
+
+# Define how the release artifacts should be archived
+archives:
+  - format: binary
+    name_template: "{{ .Binary }}-{{ .Os }}-{{ .Arch }}"
+    files:
+      - none*
+
+# Define release targets (GitHub, GitLab, etc.)
+release:
+  draft: true # Set to false for publishing releases automatically
+
+# Define checksum options
+checksum:
+  name_template: 'checksums.txt'
+
+# Define signing options (if applicable)
+# signs:
+#   - artifacts: checksum
+
+# Define any customizations for snapshot releases (e.g., for CI/CD pipelines)
+snapshot:
+  name_template: "{{ .Tag }}-SNAPSHOT"
+
+# Define any update options for Homebrew or other package managers (if applicable)
+# brews, scoop, etc...
+
+# Define any additional customizations as needed
+# changelog, etc...
