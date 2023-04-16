@@ -137,6 +137,15 @@ func fetchPlayerStatsFromJson() []PlayerStats {
 				return nil
 			}
 
+			for _, stat := range fileStats {
+				err = storePlayerStatInRedis(stat)
+				if err != nil {
+					log.Printf("Error storing player stat in Redis: %v", err)
+				} else {
+					log.Printf("Successfully set stat in Redis: Key=player_stats:%s:%s, Value=%d", stat.Player, stat.StatType, stat.Value)
+				}
+			}
+
 			stats = append(stats, fileStats...)
 		}
 		return nil

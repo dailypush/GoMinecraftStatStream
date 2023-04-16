@@ -59,11 +59,11 @@ func GetPlayerStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	redisPattern := "player_stats:" + queryParams.PlayerName
+	redisPattern := fmt.Sprintf("player_stats:%s", queryParams.PlayerName)
 	if queryParams.StatType != "" {
-		redisPattern += ":" + queryParams.StatType
+		redisPattern = fmt.Sprintf("%s:%s", redisPattern, queryParams.StatType)
 	} else {
-		redisPattern += ":*"
+		redisPattern = fmt.Sprintf("%s:*", redisPattern)
 	}
 
 	keys, err := rdb.Keys(ctx, redisPattern).Result()
@@ -72,39 +72,68 @@ func GetPlayerStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var playerStats []PlayerStats
-	for _, key := range keys {
-		value, err := rdb.Get(ctx, key).Int64()
+	// Check if the keys are empty, and if so, fetch player stats from JSON files
+	if len(keys) == 0 {
+		fetchPlayerStatsFromJson()
+		// Re-query Redis for the keys after loading stats from JSON files
+		keys, err = rdb.Keys(ctx, redisPattern).Result()
 		if err != nil {
-			http.Error(w, fmt.Sprintf("failed to get value for key %q: %v", key, err), http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		statType := strings.TrimPrefix(key, "player_stats:"+queryParams.PlayerName+":")
-		playerStat := PlayerStats{
-			Player:   queryParams.PlayerName,
-			StatType: statType,
-			Value:    int(value),
-		}
-		playerStats = append(playerStats, playerStat)
+	}
+
+	playerStats, err := getPlayerStatsFromKeys(ctx, keys, queryParams.PlayerName)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	if queryParams.GroupBy == "stattype" {
-		groupedStats := make(map[string][]PlayerStats)
-		for _, stat := range playerStats {
-			groupedStats[stat.StatType] = append(groupedStats[stat.StatType], stat)
-		}
-		playerStats = []PlayerStats{}
-		for _, group := range groupedStats {
-			playerStats = append(playerStats, group...)
-		}
+		playerStats = groupByStatType(playerStats)
 	}
 
 	if queryParams.SortOrder != "" {
 		sortByValue(playerStats, queryParams.SortOrder)
 	}
 
+	writeJSONResponse(w, playerStats)
+}
+
+func getPlayerStatsFromKeys(ctx context.Context, keys []string, playerName string) ([]PlayerStats, error) {
+	var playerStats []PlayerStats
+	for _, key := range keys {
+		value, err := rdb.Get(ctx, key).Int64()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get value for key %q: %v", key, err)
+		}
+		statType := strings.TrimPrefix(key, fmt.Sprintf("player_stats:%s:", playerName))
+		playerStat := PlayerStats{
+			Player:   playerName,
+			StatType: statType,
+			Value:    int(value),
+		}
+		playerStats = append(playerStats, playerStat)
+	}
+	return playerStats, nil
+}
+
+func groupByStatType(playerStats []PlayerStats) []PlayerStats {
+	groupedStats := make(map[string][]PlayerStats)
+	for _, stat := range playerStats {
+		groupedStats[stat.StatType] = append(groupedStats[stat.StatType], stat)
+	}
+	playerStats = []PlayerStats{}
+	for _, group := range groupedStats {
+		playerStats = append(playerStats, group...)
+	}
+	return playerStats
+}
+
+func writeJSONResponse(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(playerStats)
+	err := json.NewEncoder(w).Encode(data)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to encode JSON: %v", err), http.StatusInternalServerError)
 	}
