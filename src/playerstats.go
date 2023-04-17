@@ -33,9 +33,12 @@ func parseQueryParams(r *http.Request) (QueryParams, error) {
 		return QueryParams{}, errors.New("invalid groupby option")
 	}
 
+	statType := r.URL.Query().Get("stattype")
+	statType = strings.ReplaceAll(statType, "-", ":")
+
 	return QueryParams{
 		PlayerName: playerName,
-		StatType:   r.URL.Query().Get("stattype"),
+		StatType:   statType,
 		GroupBy:    groupBy,
 		SortOrder:  sortOrder,
 	}, nil
