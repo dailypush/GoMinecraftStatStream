@@ -19,12 +19,12 @@ This is a simple Go application that fetches player statistics from a Minecraft 
 - **Method:** `GET`
 - **Query Parameters:**
   - `playername` (required): The name of the player whose stats are to be retrieved.
-  - `stattype` (optional): The specific stat type to retrieve. If not provided, all stats for the player are retrieved.
+  - `stattype` (optional): The specific stat type to retrieve. If not provided, all stats for the player are retrieved. Use dashes (-) instead of colons (:) in the stat type.
   - `groupby` (optional): Group results by specific criteria. Currently supported: `stattype`.
   - `sort` (optional): Sort results by value. Supported values: `asc` (ascending) and `desc` (descending).
 - **Example Usage:**
   - Get all stats for player `pvpNJ`: `http://localhost:8080/playerstats?playername=pvpNJ`
-  - Get specific stat `minecraft:mined:minecraft:chest` for player `pvpNJ`: `http://localhost:8080/playerstats?playername=pvpNJ&stattype=minecraft:mined:minecraft:chest`
+  - Get specific stat `minecraft:mined:minecraft:chest` for player `pvpNJ`: `http://localhost:8080/playerstats?playername=pvpNJ&stattype=minecraft-mined-minecraft-chest`
   - Get all stats for player `pvpNJ`, grouped by `stattype` and sorted in descending order: `http://localhost:8080/playerstats?playername=pvpNJ&groupby=stattype&sort=desc`
 
 ## Configuration
