@@ -6,7 +6,7 @@ This is a simple Go application that fetches player statistics from a Minecraft 
 
 - Fetches player statistics from a Minecraft server using RCON or JSON.
 - Stores player statistics in a Redis database.
-- Offers an API to query player statistics with optional grouping and sorting.
+- Offers an API to query player statistics with optional grouping, sorting, filtering, and limiting results.
 - Allows users to query player statistics based on player name and/or specific stat type.
 
 ## Usage
@@ -18,14 +18,19 @@ This is a simple Go application that fetches player statistics from a Minecraft 
 - **Endpoint:** `/playerstats`
 - **Method:** `GET`
 - **Query Parameters:**
-  - `playername` (required): The name of the player whose stats are to be retrieved.
+  - `playername` (optional): The name of the player whose stats are to be retrieved.
+  - `playernames` (optional): return and compare multiple players
   - `stattype` (optional): The specific stat type to retrieve. If not provided, all stats for the player are retrieved. Use dashes (-) instead of colons (:) in the stat type.
   - `groupby` (optional): Group results by specific criteria. Currently supported: `stattype`.
   - `sort` (optional): Sort results by value. Supported values: `asc` (ascending) and `desc` (descending).
+  - `top` (optional): Limit the number of results to the top N items.
+  - `category` (optional): Filter stats by a specific category.
 - **Example Usage:**
   - Get all stats for player `pvpNJ`: `http://localhost:8080/playerstats?playername=pvpNJ`
   - Get specific stat `minecraft:mined:minecraft:chest` for player `pvpNJ`: `http://localhost:8080/playerstats?playername=pvpNJ&stattype=minecraft-mined-minecraft-chest`
   - Get all stats for player `pvpNJ`, grouped by `stattype` and sorted in descending order: `http://localhost:8080/playerstats?playername=pvpNJ&groupby=stattype&sort=desc`
+  - Get the top 10 mined items for player `pvpNJ`, sorted in descending order: `http://localhost:8080/playerstats?playername=pvpNJ&sort=desc&top=10&category=mined`
+  - Get stats for specific players: `http://localhost:8080/playerstats?playernames=Player1,Player2&category=mined&top=5`
 
 ## Configuration
 
@@ -53,8 +58,7 @@ The application is written in Go and consists of the following components:
 - `stats.go`: Fetches player stats and stores them in Redis.
 - `mojang.go`: Converts player UUIDs to player names.
 - `handler.go`: HTTP handlers for the API endpoints.
-- `playerstats.go`: The endpoint for querying player stats with grouping and sorting functionality.
-
+- `playerstats.go`: The endpoint for querying player stats with grouping, sorting, filtering, and limiting functionality.
 ## License
 
 This project is licensed under the MIT License.

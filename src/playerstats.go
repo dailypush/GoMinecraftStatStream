@@ -7,25 +7,27 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 )
 
 type QueryParams struct {
-	PlayerName string
-	StatType   string
-	GroupBy    string
-	SortOrder  string
+	PlayerName  string
+	PlayerNames string
+	StatType    string
+	GroupBy     string
+	SortOrder   string
+	Top         int
+	Category    string
 }
 
 func parseQueryParams(r *http.Request) (QueryParams, error) {
 	playerName := r.URL.Query().Get("playername")
-	if playerName == "" {
-		return QueryParams{}, errors.New("player name is required")
-	}
+	playerNames := r.URL.Query().Get("playernames")
 
 	sortOrder := r.URL.Query().Get("sort")
 	if sortOrder != "" && sortOrder != "asc" && sortOrder != "desc" {
-		return QueryParams{}, errors.New("invalid sort order")
+		return QueryParams{}, errors.New("invalid sort order: must be either 'asc' or 'desc")
 	}
 
 	groupBy := r.URL.Query().Get("groupby")
@@ -33,14 +35,28 @@ func parseQueryParams(r *http.Request) (QueryParams, error) {
 		return QueryParams{}, errors.New("invalid groupby option")
 	}
 
+	top := r.URL.Query().Get("top")
+	topInt := 0
+	if top != "" {
+		var err error
+		topInt, err = strconv.Atoi(top)
+		if err != nil {
+			return QueryParams{}, errors.New("invalid top value")
+		}
+	}
+	category := r.URL.Query().Get("category")
+
 	statType := r.URL.Query().Get("stattype")
 	statType = strings.ReplaceAll(statType, "-", ":")
 
 	return QueryParams{
-		PlayerName: playerName,
-		StatType:   statType,
-		GroupBy:    groupBy,
-		SortOrder:  sortOrder,
+		PlayerName:  playerName,
+		PlayerNames: playerNames,
+		StatType:    statType,
+		GroupBy:     groupBy,
+		SortOrder:   sortOrder,
+		Top:         topInt,
+		Category:    category,
 	}, nil
 }
 
@@ -61,36 +77,56 @@ func GetPlayerStats(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	var playerStats []PlayerStats
 
-	redisPattern := fmt.Sprintf("player_stats:%s", queryParams.PlayerName)
-	if queryParams.StatType != "" {
-		redisPattern = fmt.Sprintf("%s:%s", redisPattern, queryParams.StatType)
+	if queryParams.PlayerNames != "" {
+		playerNames := strings.Split(queryParams.PlayerNames, ",")
+		var allPlayerStats []PlayerStats
+		for _, playerName := range playerNames {
+			redisPattern := fmt.Sprintf("player_stats:%s", playerName)
+			keys, err := rdb.Keys(ctx, redisPattern).Result()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			stats, err := getPlayerStatsFromKeys(ctx, keys, playerName)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			allPlayerStats = append(allPlayerStats, stats...)
+		}
+
+		playerStats = allPlayerStats
 	} else {
-		redisPattern = fmt.Sprintf("%s:*", redisPattern)
-	}
+		redisPattern := "player_stats:*"
+		if queryParams.PlayerName != "" {
+			redisPattern = fmt.Sprintf("player_stats:%s", queryParams.PlayerName)
+		}
 
-	keys, err := rdb.Keys(ctx, redisPattern).Result()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Check if the keys are empty, and if so, fetch player stats from JSON files
-	if len(keys) == 0 {
-		fetchPlayerStatsFromJson()
-		// Re-query Redis for the keys after loading stats from JSON files
-		keys, err = rdb.Keys(ctx, redisPattern).Result()
+		keys, err := rdb.Keys(ctx, redisPattern).Result()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-	}
 
-	playerStats, err := getPlayerStatsFromKeys(ctx, keys, queryParams.PlayerName)
+		// Check if the keys are empty, and if so, fetch player stats from JSON files
+		if len(keys) == 0 {
+			fetchPlayerStatsFromJson()
+			// Re-query Redis for the keys after loading stats from JSON files
+			keys, err = rdb.Keys(ctx, redisPattern).Result()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
 
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		playerStats, err = getPlayerStatsFromKeys(ctx, keys, queryParams.PlayerName)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	if queryParams.GroupBy == "stattype" {
@@ -100,8 +136,32 @@ func GetPlayerStats(w http.ResponseWriter, r *http.Request) {
 	if queryParams.SortOrder != "" {
 		sortByValue(playerStats, queryParams.SortOrder)
 	}
+	if queryParams.Top > 0 && queryParams.Category != "" {
+		playerStats = getTopCategoryItems(playerStats, queryParams.Category, queryParams.Top)
+	}
 
 	writeJSONResponse(w, playerStats)
+}
+
+func getTopCategoryItems(playerStats []PlayerStats, category string, top int) []PlayerStats {
+	var categoryItems []PlayerStats
+	categoryPrefix := fmt.Sprintf("minecraft:%s:", category)
+
+	for _, stat := range playerStats {
+		if strings.HasPrefix(stat.StatType, categoryPrefix) {
+			categoryItems = append(categoryItems, stat)
+		}
+	}
+
+	sort.Slice(categoryItems, func(i, j int) bool {
+		return categoryItems[i].Value > categoryItems[j].Value
+	})
+
+	if top > len(categoryItems) {
+		top = len(categoryItems)
+	}
+
+	return categoryItems[:top]
 }
 
 func getPlayerStatsFromKeys(ctx context.Context, keys []string, playerName string) ([]PlayerStats, error) {
