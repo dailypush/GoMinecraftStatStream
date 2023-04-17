@@ -53,13 +53,12 @@ func getStats(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	port := os.Getenv("SERVER_PORT")
-	if port == "" {
-		port = "8080" // Set the default port number here
-	}
 
 	server := &Server{}
-	server.Start(port)
+	server.Start(ServerPort)
+
+	// Start the pollPlayerStats function in a separate goroutine
+	go pollPlayerStats(PollingInterval)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
