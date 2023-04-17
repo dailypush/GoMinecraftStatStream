@@ -77,6 +77,7 @@ func GetPlayerStats(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	fmt.Println("Fetching player stats...")
 	var playerStats []PlayerStats
 
 	if queryParams.PlayerNames != "" {
@@ -121,7 +122,7 @@ func GetPlayerStats(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-
+		fmt.Printf("Found %d keys in Redis.\n", len(keys))
 		playerStats, err = getPlayerStatsFromKeys(ctx, keys, queryParams.PlayerName)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

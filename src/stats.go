@@ -73,7 +73,7 @@ func fetchPlayerStatsFromRcon() []PlayerStats {
 			if err != nil {
 				log.Printf("Error storing player stat in Redis: %v", err)
 			} else {
-				log.Printf("Successfully set stat in Redis: Key=player_stats:%s:%s, Value=%d", playerName, statType, stat.Value)
+				// log.Printf("Successfully set stat in Redis: Key=player_stats:%s:%s, Value=%d", playerName, statType, stat.Value)
 			}
 
 			stats = append(stats, stat)
@@ -130,7 +130,8 @@ func fetchPlayerStatsFromJson() []PlayerStats {
 			return err
 		}
 
-		if !info.IsDir() {
+		if !info.IsDir() && filepath.Ext(info.Name()) == ".json" {
+			fmt.Println("Processing stat file:", path)
 			fileStats, err := processStatFile(path)
 			if err != nil {
 				log.Printf("Error processing stat file %s: %v", path, err)
@@ -142,7 +143,7 @@ func fetchPlayerStatsFromJson() []PlayerStats {
 				if err != nil {
 					log.Printf("Error storing player stat in Redis: %v", err)
 				} else {
-					log.Printf("Successfully set stat in Redis: Key=player_stats:%s:%s, Value=%d", stat.Player, stat.StatType, stat.Value)
+					//log.Printf("Successfully set stat in Redis: Key=player_stats:%s:%s, Value=%d", stat.Player, stat.StatType, stat.Value)
 				}
 			}
 

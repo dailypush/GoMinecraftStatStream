@@ -4,13 +4,28 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"time"
 )
 
 var ctx = context.Background()
 
 func pollPlayerStats(interval time.Duration) {
+	lastModified := time.Time{}
+
 	for {
+		// Check the modification time of the file
+		fileInfo, err := os.Stat(JsonStatsDirectory)
+		if err != nil {
+			log.Printf("Error getting stats directory info: %v", err)
+		} else if !fileInfo.ModTime().After(lastModified) {
+			// Skip this iteration if the file hasn't been modified since the last iteration
+			time.Sleep(interval)
+			continue
+		} else {
+			lastModified = fileInfo.ModTime()
+		}
+
 		stats := fetchPlayerStats()
 
 		// Update the stats in Redis
