@@ -13,8 +13,7 @@ import (
 )
 
 type QueryParams struct {
-	PlayerName  string
-	PlayerNames string
+	PlayerNames []string
 	StatType    string
 	GroupBy     string
 	SortOrder   string
@@ -23,13 +22,17 @@ type QueryParams struct {
 }
 
 func parseQueryParams(r *http.Request) (QueryParams, error) {
-	playerName := r.URL.Query().Get("playername")
-	playerNames := r.URL.Query().Get("playernames")
-	log.Printf("Processing request for player name: %s", playerName)
+	playerNamesStr := r.URL.Query().Get("playernames")
+	log.Printf("Processing request for player names: %s", playerNamesStr)
+
+	var playerNames []string
+	if playerNamesStr != "" {
+		playerNames = strings.Split(playerNamesStr, ",")
+	}
 
 	sortOrder := r.URL.Query().Get("sort")
 	if sortOrder != "" && sortOrder != "asc" && sortOrder != "desc" {
-		return QueryParams{}, errors.New("invalid sort order: must be either 'asc' or 'desc")
+		return QueryParams{}, errors.New("invalid sort order: must be either 'asc' or 'desc'")
 	}
 
 	groupBy := r.URL.Query().Get("groupby")
@@ -52,7 +55,6 @@ func parseQueryParams(r *http.Request) (QueryParams, error) {
 	statType = strings.ReplaceAll(statType, "-", ":")
 
 	return QueryParams{
-		PlayerName:  playerName,
 		PlayerNames: playerNames,
 		StatType:    statType,
 		GroupBy:     groupBy,
@@ -83,13 +85,8 @@ func GetPlayerStats(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Fetching player stats...")
 	var playerStats []PlayerStats
 
-	playerNames := []string{}
-	if queryParams.PlayerNames != "" {
-		playerNames = append(playerNames, strings.Split(queryParams.PlayerNames, ",")...)
-	}
-
 	var allPlayerStats []PlayerStats
-	for _, playerName := range playerNames {
+	for _, playerName := range queryParams.PlayerNames {
 		redisPattern := fmt.Sprintf("player_stats:%s", playerName)
 		keys, err := rdb.Keys(ctx, redisPattern).Result()
 		if err != nil {
@@ -106,7 +103,7 @@ func GetPlayerStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	playerStats = allPlayerStats
-	if len(playerNames) == 0 {
+	if len(queryParams.PlayerNames) == 0 {
 		redisPattern := "player_stats:*"
 
 		keys, err := rdb.Keys(ctx, redisPattern).Result()
