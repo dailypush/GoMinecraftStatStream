@@ -49,6 +49,7 @@ func storePlayerStatInRedis(stat PlayerStats) error {
 	if err != nil {
 		return fmt.Errorf("failed to set stat in Redis: %v", err)
 	}
+	log.Printf("Stored player stat in Redis: Key=%s, Value=%d", key, stat.Value)
 
 	return nil
 }

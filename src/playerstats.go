@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"sort"
 	"strconv"
@@ -24,6 +25,7 @@ type QueryParams struct {
 func parseQueryParams(r *http.Request) (QueryParams, error) {
 	playerName := r.URL.Query().Get("playername")
 	playerNames := r.URL.Query().Get("playernames")
+	log.Printf("Processing request for player name: %s", playerName)
 
 	sortOrder := r.URL.Query().Get("sort")
 	if sortOrder != "" && sortOrder != "asc" && sortOrder != "desc" {
@@ -58,6 +60,7 @@ func parseQueryParams(r *http.Request) (QueryParams, error) {
 		Top:         topInt,
 		Category:    category,
 	}, nil
+
 }
 
 func sortByValue(playerStats []PlayerStats, order string) {
@@ -80,31 +83,31 @@ func GetPlayerStats(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Fetching player stats...")
 	var playerStats []PlayerStats
 
+	playerNames := []string{}
 	if queryParams.PlayerNames != "" {
-		playerNames := strings.Split(queryParams.PlayerNames, ",")
-		var allPlayerStats []PlayerStats
-		for _, playerName := range playerNames {
-			redisPattern := fmt.Sprintf("player_stats:%s", playerName)
-			keys, err := rdb.Keys(ctx, redisPattern).Result()
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
+		playerNames = append(playerNames, strings.Split(queryParams.PlayerNames, ",")...)
+	}
 
-			stats, err := getPlayerStatsFromKeys(ctx, keys, playerName)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			allPlayerStats = append(allPlayerStats, stats...)
+	var allPlayerStats []PlayerStats
+	for _, playerName := range playerNames {
+		redisPattern := fmt.Sprintf("player_stats:%s", playerName)
+		keys, err := rdb.Keys(ctx, redisPattern).Result()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 
-		playerStats = allPlayerStats
-	} else {
+		stats, err := getPlayerStatsFromKeys(ctx, keys, playerName)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		allPlayerStats = append(allPlayerStats, stats...)
+	}
+
+	playerStats = allPlayerStats
+	if len(playerNames) == 0 {
 		redisPattern := "player_stats:*"
-		if queryParams.PlayerName != "" {
-			redisPattern = fmt.Sprintf("player_stats:%s", queryParams.PlayerName)
-		}
 
 		keys, err := rdb.Keys(ctx, redisPattern).Result()
 		if err != nil {
@@ -112,10 +115,8 @@ func GetPlayerStats(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Check if the keys are empty, and if so, fetch player stats from JSON files
 		if len(keys) == 0 {
 			fetchPlayerStatsFromJson()
-			// Re-query Redis for the keys after loading stats from JSON files
 			keys, err = rdb.Keys(ctx, redisPattern).Result()
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -123,7 +124,7 @@ func GetPlayerStats(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		fmt.Printf("Found %d keys in Redis.\n", len(keys))
-		playerStats, err = getPlayerStatsFromKeys(ctx, keys, queryParams.PlayerName)
+		playerStats, err = getPlayerStatsFromKeys(ctx, keys, "")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -167,6 +168,9 @@ func getTopCategoryItems(playerStats []PlayerStats, category string, top int) []
 
 func getPlayerStatsFromKeys(ctx context.Context, keys []string, playerName string) ([]PlayerStats, error) {
 	var playerStats []PlayerStats
+
+	// Add this log statement to print the number of keys found in Redis
+	log.Printf("Found %d keys in Redis.", len(keys))
 	for _, key := range keys {
 		value, err := rdb.Get(ctx, key).Int64()
 		if err != nil {
@@ -179,6 +183,7 @@ func getPlayerStatsFromKeys(ctx context.Context, keys []string, playerName strin
 			Value:    int(value),
 		}
 		playerStats = append(playerStats, playerStat)
+		log.Printf("Retrieved player stat from Redis: Key=%s, Value=%d", key, value)
 	}
 	return playerStats, nil
 }

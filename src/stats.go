@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -114,47 +116,44 @@ func processStatFile(path string) ([]PlayerStats, error) {
 				StatType: fmt.Sprintf("%s:%s", statType, stat),
 				Value:    value,
 			}
-
 			stats = append(stats, playerStat)
 		}
 	}
-
+	log.Printf("PlayerStats from file %s: %+v\n", path, stats)
 	return stats, nil
 }
 
 func fetchPlayerStatsFromJson() []PlayerStats {
-	stats := []PlayerStats{}
-
-	err := filepath.Walk(JsonStatsDirectory, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if !info.IsDir() && filepath.Ext(info.Name()) == ".json" {
-			fmt.Println("Processing stat file:", path)
-			fileStats, err := processStatFile(path)
-			if err != nil {
-				log.Printf("Error processing stat file %s: %v", path, err)
-				return nil
-			}
-
-			for _, stat := range fileStats {
-				err = storePlayerStatInRedis(stat)
-				if err != nil {
-					log.Printf("Error storing player stat in Redis: %v", err)
-				} else {
-					//log.Printf("Successfully set stat in Redis: Key=player_stats:%s:%s, Value=%d", stat.Player, stat.StatType, stat.Value)
-				}
-			}
-
-			stats = append(stats, fileStats...)
-		}
-		return nil
-	})
-
+	jsonFiles, err := ioutil.ReadDir(JsonStatsDirectory)
 	if err != nil {
-		log.Fatal("Failed to fetch stats from JSON files:", err)
+		log.Fatalf("failed to read JSON stats directory: %v", err)
 	}
 
-	return stats
+	ctx := context.Background()
+	var allStats []PlayerStats
+	for _, file := range jsonFiles {
+		if !strings.HasSuffix(file.Name(), ".json") {
+			continue
+		}
+
+		filePath := filepath.Join(JsonStatsDirectory, file.Name())
+		log.Printf("Updating stats from file: %s", filePath)
+		stats, err := processStatFile(filePath)
+		if err != nil {
+			log.Printf("failed to read stats from file %q: %v", filePath, err)
+			continue
+		}
+
+		for _, stat := range stats {
+			key := fmt.Sprintf("player_stats:%s:%s", stat.Player, stat.StatType)
+			err := rdb.Set(ctx, key, stat.Value, 0).Err()
+			if err != nil {
+				log.Printf("Failed to set stat in Redis: Key=%s, Value=%d", key, stat.Value)
+			} else {
+				log.Printf("Successfully set stat in Redis: Key=%s, Value=%d", key, stat.Value)
+			}
+		}
+		allStats = append(allStats, stats...)
+	}
+	return allStats
 }

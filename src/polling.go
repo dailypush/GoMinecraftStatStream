@@ -27,18 +27,9 @@ func pollPlayerStats(interval time.Duration) {
 
 		if len(updatedFiles) > 0 {
 			// Fetch player stats from the updated files
-			stats, err := fetchPlayerStatsFromFiles(updatedFiles)
+			err = fetchPlayerStatsFromFiles(updatedFiles)
 			if err != nil {
 				log.Printf("Error fetching player stats from files: %v", err)
-			}
-
-			// Update the stats in Redis
-			for _, stat := range stats {
-				key := fmt.Sprintf("player_stats:%s:%s", stat.Player, stat.StatType)
-				err := rdb.Set(ctx, key, stat.Value, 0).Err()
-				if err != nil {
-					log.Printf("Failed to update stat in Redis: %v", err)
-				}
 			}
 
 			// Update the hashes of processed files
@@ -53,13 +44,11 @@ func pollPlayerStats(interval time.Duration) {
 	}
 }
 
-func fetchPlayerStatsFromFiles(files []string) ([]PlayerStats, error) {
-	stats := []PlayerStats{}
-
+func fetchPlayerStatsFromFiles(files []string) error {
 	for _, file := range files {
 		fileStats, err := processStatFile(file)
 		if err != nil {
-			return nil, fmt.Errorf("failed to process stat file: %v", err)
+			return fmt.Errorf("failed to process stat file: %v", err)
 		}
 
 		for _, stat := range fileStats {
@@ -67,16 +56,13 @@ func fetchPlayerStatsFromFiles(files []string) ([]PlayerStats, error) {
 			if err != nil {
 				log.Printf("Error storing player stat in Redis: %v", err)
 			} else {
-				//log.Printf("Successfully set stat in Redis: Key=player_stats:%s:%s, Value=%d", stat.Player, stat.StatType, stat.Value)
+				log.Printf("Successfully set stat in Redis: Key=player_stats:%s:%s, Value=%d", stat.Player, stat.StatType, stat.Value)
 			}
 		}
-
-		stats = append(stats, fileStats...)
 	}
 
-	return stats, nil
+	return nil
 }
-
 func getUpdatedStatFiles(hashes map[string]string) ([]string, error) {
 	updatedFiles := []string{}
 
