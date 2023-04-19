@@ -1,8 +1,11 @@
 services:
   api:
-    build: .
+    build:
+      context: .
+      target: production-runtime
     ports:
       - "8080:8080"
+      - "2345:2345"
     depends_on:
       - redis
     environment:
@@ -14,6 +17,11 @@ services:
       - REDIS_DB=0
     volumes:
       - ./json:/json_stats:ro
+    command: dlv debug --headless --listen=:2345 --api-version=2 --accept-multiclient --log main.go
+    security_opt:
+      - "seccomp:unconfined"
+    cap_add:
+      - SYS_PTRACE
   redis:
     image: "redis:6.2-alpine"
     volumes:

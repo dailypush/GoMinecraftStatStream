@@ -3,67 +3,11 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"sort"
-	"strconv"
 	"strings"
 )
-
-type QueryParams struct {
-	PlayerNames []string
-	StatType    string
-	GroupBy     string
-	SortOrder   string
-	Top         int
-	Category    string
-}
-
-func parseQueryParams(r *http.Request) (QueryParams, error) {
-	playerNamesStr := r.URL.Query().Get("playernames")
-	log.Printf("Processing request for player names: %s", playerNamesStr)
-
-	var playerNames []string
-	if playerNamesStr != "" {
-		playerNames = strings.Split(playerNamesStr, ",")
-	}
-
-	sortOrder := r.URL.Query().Get("sort")
-	if sortOrder != "" && sortOrder != "asc" && sortOrder != "desc" {
-		return QueryParams{}, errors.New("invalid sort order: must be either 'asc' or 'desc'")
-	}
-
-	groupBy := r.URL.Query().Get("groupby")
-	if groupBy != "" && groupBy != "stattype" {
-		return QueryParams{}, errors.New("invalid groupby option")
-	}
-
-	top := r.URL.Query().Get("top")
-	topInt := 0
-	if top != "" {
-		var err error
-		topInt, err = strconv.Atoi(top)
-		if err != nil {
-			return QueryParams{}, errors.New("invalid top value")
-		}
-	}
-	category := r.URL.Query().Get("category")
-
-	statType := r.URL.Query().Get("stattype")
-	statType = strings.ReplaceAll(statType, "-", ":")
-
-	return QueryParams{
-		PlayerNames: playerNames,
-		StatType:    statType,
-		GroupBy:     groupBy,
-		SortOrder:   sortOrder,
-		Top:         topInt,
-		Category:    category,
-	}, nil
-
-}
 
 func sortByValue(playerStats []PlayerStats, order string) {
 	sort.Slice(playerStats, func(i, j int) bool {
@@ -85,25 +29,27 @@ func GetPlayerStats(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Fetching player stats...")
 	var playerStats []PlayerStats
 
-	var allPlayerStats []PlayerStats
-	for _, playerName := range queryParams.PlayerNames {
-		redisPattern := fmt.Sprintf("player_stats:%s", playerName)
-		keys, err := rdb.Keys(ctx, redisPattern).Result()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+	if len(queryParams.PlayerNames) > 0 {
+		for _, playerName := range queryParams.PlayerNames {
+			redisPattern := fmt.Sprintf("player_stats:%s", playerName)
+			fmt.Println("redis pattern: ", redisPattern)
+			keys, err := rdb.Keys(ctx, redisPattern).Result()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 
-		stats, err := getPlayerStatsFromKeys(ctx, keys, playerName)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		allPlayerStats = append(allPlayerStats, stats...)
-	}
+			fmt.Printf("Found keys: %v\n", keys) // Added print statement
+			stats, err := getPlayerStatsFromKeys(ctx, keys)
+			fmt.Printf("Fetched stats: %v\n", stats) // Added print statement
 
-	playerStats = allPlayerStats
-	if len(queryParams.PlayerNames) == 0 {
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			playerStats = append(playerStats, stats...)
+		}
+	} else {
 		redisPattern := "player_stats:*"
 
 		keys, err := rdb.Keys(ctx, redisPattern).Result()
@@ -121,7 +67,7 @@ func GetPlayerStats(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		fmt.Printf("Found %d keys in Redis.\n", len(keys))
-		playerStats, err = getPlayerStatsFromKeys(ctx, keys, "")
+		playerStats, err = getPlayerStatsFromKeys(ctx, keys)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -161,28 +107,6 @@ func getTopCategoryItems(playerStats []PlayerStats, category string, top int) []
 	}
 
 	return categoryItems[:top]
-}
-
-func getPlayerStatsFromKeys(ctx context.Context, keys []string, playerName string) ([]PlayerStats, error) {
-	var playerStats []PlayerStats
-
-	// Add this log statement to print the number of keys found in Redis
-	log.Printf("Found %d keys in Redis.", len(keys))
-	for _, key := range keys {
-		value, err := rdb.Get(ctx, key).Int64()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get value for key %q: %v", key, err)
-		}
-		statType := strings.TrimPrefix(key, fmt.Sprintf("player_stats:%s:", playerName))
-		playerStat := PlayerStats{
-			Player:   playerName,
-			StatType: statType,
-			Value:    int(value),
-		}
-		playerStats = append(playerStats, playerStat)
-		log.Printf("Retrieved player stat from Redis: Key=%s, Value=%d", key, value)
-	}
-	return playerStats, nil
 }
 
 func groupByStatType(playerStats []PlayerStats) []PlayerStats {
