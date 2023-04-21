@@ -9,6 +9,8 @@ import (
 	"strings"
 )
 
+const playerStatsPattern = "player_stats:%s"
+
 func sortByValue(playerStats []PlayerStats, order string) {
 	sort.Slice(playerStats, func(i, j int) bool {
 		if order == "desc" {
@@ -39,9 +41,9 @@ func GetPlayerStats(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			fmt.Printf("Found keys: %v\n", keys) // Added print statement
+			fmt.Printf("Found keys: %v\n", keys)
 			stats, err := getPlayerStatsFromKeys(ctx, keys)
-			fmt.Printf("Fetched stats: %v\n", stats) // Added print statement
+			fmt.Printf("Fetched stats: %v\n", stats)
 
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -59,18 +61,23 @@ func GetPlayerStats(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if len(keys) == 0 {
-			fetchPlayerStatsFromJson()
+			allStats, err := fetchPlayerStatsFromJson()
+			if err != nil {
+				http.Error(w, fmt.Sprintf("failed to fetch player stats from JSON: %v", err), http.StatusInternalServerError)
+				return
+			}
 			keys, err = rdb.Keys(ctx, redisPattern).Result()
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-		}
-		fmt.Printf("Found %d keys in Redis.\n", len(keys))
-		playerStats, err = getPlayerStatsFromKeys(ctx, keys)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+			playerStats = allStats
+		} else {
+			playerStats, err = getPlayerStatsFromKeys(ctx, keys)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 		}
 	}
 
@@ -121,10 +128,11 @@ func groupByStatType(playerStats []PlayerStats) []PlayerStats {
 	return playerStats
 }
 
-func writeJSONResponse(w http.ResponseWriter, data interface{}) {
+func writeJSONResponse(w http.ResponseWriter, data interface{}) error {
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(data)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("failed to encode JSON: %v", err), http.StatusInternalServerError)
+		return fmt.Errorf("failed to encode JSON: %v", err)
 	}
+	return nil
 }
