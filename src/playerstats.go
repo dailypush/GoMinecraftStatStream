@@ -87,7 +87,7 @@ func GetPlayerStats(w http.ResponseWriter, r *http.Request) {
 
 	var allPlayerStats []PlayerStats
 	for _, playerName := range queryParams.PlayerNames {
-		redisPattern := fmt.Sprintf("player_stats:%s", playerName)
+		redisPattern := fmt.Sprintf("player_stats:%s:*", playerName)
 		keys, err := rdb.Keys(ctx, redisPattern).Result()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
