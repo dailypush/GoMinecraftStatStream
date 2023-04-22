@@ -31,6 +31,8 @@ This is a simple Go application that fetches player statistics from a Minecraft 
   - Get all stats for player `pvpNJ`, grouped by `stattype` and sorted in descending order: `http://localhost:8080/playerstats?playername=pvpNJ&groupby=stattype&sort=desc`
   - Get the top 10 mined items for player `pvpNJ`, sorted in descending order: `http://localhost:8080/playerstats?playername=pvpNJ&sort=desc&top=10&category=mined`
   - Get stats for specific players: `http://localhost:8080/playerstats?playernames=Player1,Player2&category=mined&top=5`
+  - Get stats for top ten most crafted items: `http://localhost:8080/playerstats?category=minecraft:crafted&top=10&sort=desc`
+
 
 ## Configuration
 

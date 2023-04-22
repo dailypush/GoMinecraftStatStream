@@ -82,6 +82,8 @@ func GetPlayerStats(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	log.Printf("Query params: %+v\n", queryParams)
+
 	fmt.Println("Fetching player stats...")
 	var playerStats []PlayerStats
 
@@ -121,6 +123,7 @@ func GetPlayerStats(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		fmt.Printf("Found %d keys in Redis.\n", len(keys))
+		log.Printf("Keys: %+v\n", keys)
 		playerStats, err = getPlayerStatsFromKeys(ctx, keys, "")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -138,29 +141,33 @@ func GetPlayerStats(w http.ResponseWriter, r *http.Request) {
 	if queryParams.Top > 0 && queryParams.Category != "" {
 		playerStats = getTopCategoryItems(playerStats, queryParams.Category, queryParams.Top)
 	}
-
+	log.Printf("Returning %d player stats\n", len(playerStats))
 	writeJSONResponse(w, playerStats)
 }
 
 func getTopCategoryItems(playerStats []PlayerStats, category string, top int) []PlayerStats {
-	var categoryItems []PlayerStats
-	categoryPrefix := fmt.Sprintf("minecraft:%s:", category)
+	filteredStats := []PlayerStats{}
+	lowerCategory := strings.ToLower(category)
 
 	for _, stat := range playerStats {
-		if strings.HasPrefix(stat.StatType, categoryPrefix) {
-			categoryItems = append(categoryItems, stat)
+		log.Printf("StatType: %s", stat.StatType)
+		if strings.HasPrefix(strings.ToLower(stat.StatType), lowerCategory) {
+			filteredStats = append(filteredStats, stat)
 		}
 	}
 
-	sort.Slice(categoryItems, func(i, j int) bool {
-		return categoryItems[i].Value > categoryItems[j].Value
-	})
-
-	if top > len(categoryItems) {
-		top = len(categoryItems)
+	log.Printf("Filtered stats by category '%s': %d stats", category, len(filteredStats))
+	for _, filteredStat := range filteredStats {
+		log.Printf("Filtered stat: %+v", filteredStat)
 	}
 
-	return categoryItems[:top]
+	sortByValue(filteredStats, "desc")
+
+	if top > 0 && top < len(filteredStats) {
+		filteredStats = filteredStats[:top]
+	}
+	log.Printf("Returning top %d items in category '%s'\n", top, category)
+	return filteredStats
 }
 
 func getPlayerStatsFromKeys(ctx context.Context, keys []string, playerName string) ([]PlayerStats, error) {
@@ -173,14 +180,21 @@ func getPlayerStatsFromKeys(ctx context.Context, keys []string, playerName strin
 		if err != nil {
 			return nil, fmt.Errorf("failed to get value for key %q: %v", key, err)
 		}
-		statType := strings.TrimPrefix(key, fmt.Sprintf("player_stats:%s:", playerName))
+
+		parts := strings.Split(key, ":")
+		if len(parts) < 3 {
+			continue
+		}
+		playerName := parts[1]
+		statType := strings.Join(parts[2:], ":")
+
 		playerStat := PlayerStats{
 			Player:   playerName,
 			StatType: statType,
 			Value:    int(value),
 		}
 		playerStats = append(playerStats, playerStat)
-		log.Printf("Retrieved player stat from Redis: Key=%s, Value=%d", key, value)
+		//log.Printf("Retrieved player stat from Redis: Key=%s, Value=%d", key, value)
 	}
 	return playerStats, nil
 }
