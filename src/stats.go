@@ -101,7 +101,7 @@ func processStatFile(path string) ([]PlayerStats, error) {
 
 	fileName := filepath.Base(path)
 	playerUUID := fileName[:len(fileName)-len(".json")]
-	playerName, err := uuidToPlayerName(playerUUID)
+	playerName, err := getPlayerNameFromUUID(playerUUID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert UUID to player name: %v", err)
 	}
