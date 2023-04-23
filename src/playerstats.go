@@ -200,15 +200,23 @@ func getPlayerStatsFromKeys(ctx context.Context, keys []string, playerName strin
 }
 
 func groupByStatType(playerStats []PlayerStats) []PlayerStats {
-	groupedStats := make(map[string][]PlayerStats)
+	groupedStats := make(map[string]int)
+
 	for _, stat := range playerStats {
-		groupedStats[stat.StatType] = append(groupedStats[stat.StatType], stat)
+		groupedStats[stat.StatType] += stat.Value
 	}
-	playerStats = []PlayerStats{}
-	for _, group := range groupedStats {
-		playerStats = append(playerStats, group...)
+
+	aggregatedStats := []PlayerStats{}
+	for statType, value := range groupedStats {
+		aggregatedStat := PlayerStats{
+			Player:   "",
+			StatType: statType,
+			Value:    value,
+		}
+		aggregatedStats = append(aggregatedStats, aggregatedStat)
 	}
-	return playerStats
+
+	return aggregatedStats
 }
 
 func writeJSONResponse(w http.ResponseWriter, data interface{}) {
