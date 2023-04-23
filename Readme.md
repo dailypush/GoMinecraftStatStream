@@ -4,15 +4,27 @@ This is a simple Go application that fetches player statistics from a Minecraft 
 
 ## Features
 
-- Fetches player statistics from a Minecraft server using RCON or JSON.
+- Fetches player statistics from a Minecraft server using RCON or JSON 
 - Stores player statistics in a Redis database.
 - Offers an API to query player statistics with optional grouping, sorting, filtering, and limiting results.
 - Allows users to query player statistics based on player name and/or specific stat type.
+- Caches player UUID to username mappings using Mojang API
+- Supports querying summarized stats, current players, and stat types
 
 ## Usage
 
 ### API Endpoints
-
+1. `GET /getstats`
+   - Returns the latest fetched player stats
+2. `GET /playerstats?playerName={playerName}`
+   - Returns stats for the specified player by their username
+3. `GET /currentplayers`
+   - Returns a list of the current player names loaded in Redis
+4. `GET /summarizedstats?statType={statType}`
+   - Returns summarized stats for the specified stat type (e.g., kills, deaths, etc.)
+   - Also returns the specific stat types that make up the summarized stats
+5. `GET /allstattypes`
+   - Returns a list of all available stat types (unique) stored in Redis
 #### Get Player Stats
 
 - **Endpoint:** `/playerstats`

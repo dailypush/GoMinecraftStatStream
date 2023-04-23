@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"net/http"
 	"os"
@@ -41,15 +40,12 @@ func (s *Server) Stop() {
 func (s *Server) routes() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/getstats", getStats)
+	mux.HandleFunc("/currentplayers", GetCurrentPlayers)
+	mux.HandleFunc("/summarizedstats", getSummarizedStatsHandler)
+	mux.HandleFunc("/allstattypes", getAllStatTypesHandler)
 	// mux.HandleFunc("/ws", wsEndpoint) // Define wsEndpoint if needed
 	mux.HandleFunc("/playerstats", GetPlayerStats) // Referencing GetPlayerStats from playerstats.go
 	return mux
-}
-
-func getStats(w http.ResponseWriter, r *http.Request) {
-	stats := fetchPlayerStats()
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(stats)
 }
 
 func main() {
