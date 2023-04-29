@@ -23,6 +23,7 @@ This is a simple Go application that fetches player statistics from a Minecraft 
 4. `GET /summarizedstats?statType={statType}`
    - Returns summarized stats for the specified stat type (e.g., kills, deaths, etc.)
    - Also returns the specific stat types that make up the summarized stats
+   - ` curl "https://localhost:8080/summarizedstats?statType=planks"`   
 5. `GET /allstattypes`
    - Returns a list of all available stat types (unique) stored in Redis
 #### Get Player Stats
