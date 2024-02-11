@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/go-redis/redis/v8 v8.11.5
-	github.com/gorcon/rcon v1.3.4
+	github.com/gorcon/rcon v1.3.5
 	github.com/stretchr/testify v1.8.4
 )
 
