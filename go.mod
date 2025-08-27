@@ -1,11 +1,11 @@
 module minecraftstatstream
 
-go 1.20
+go 1.21
 
 require (
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/gorcon/rcon v1.3.5
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.11.1
 )
 
 require (
